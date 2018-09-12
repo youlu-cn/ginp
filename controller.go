@@ -10,7 +10,10 @@ import (
 
 type Controller interface {
 	Group() string
+	TokenRequired(string) bool
 }
+
+type H gin.H
 
 type Response struct {
 	Code    int         `json:"code"`
@@ -35,6 +38,20 @@ func DataResponse(data interface{}) *Response {
 	}
 }
 
+func TokenResponse(user *UserInfo, signKey string) *Response {
+	if signKey == "" {
+		signKey = tokenSignKey
+	}
+	j := NewJWT(signKey)
+	token, err := j.Create(user)
+	if err != nil {
+		return ErrorResponse(http.StatusUnauthorized, err)
+	}
+	return DataResponse(H{
+		"token": token,
+	})
+}
+
 type Request struct {
 	*http.Request
 	ctx *gin.Context
@@ -48,7 +65,20 @@ func (req *Request) BindJSON(obj interface{}) error {
 	return req.ctx.BindJSON(obj)
 }
 
-func handleRequest(obj interface{}) gin.HandlerFunc {
+func (req *Request) GetUserInfo() *UserInfo {
+	if !checkToken {
+		return nil
+	}
+	if c, ok := req.ctx.Get("claims"); !ok {
+		return nil
+	} else if claims, ok := c.(*Claims); ok {
+		return claims.UserInfo
+	} else {
+		return nil
+	}
+}
+
+func handleRequest(obj Controller) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := &Request{
 			Request: c.Request,

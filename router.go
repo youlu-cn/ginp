@@ -12,7 +12,9 @@ const (
 )
 
 var (
-	Engine = gin.Default()
+	checkToken   = true
+	tokenSignKey = "default_key"
+	Engine       = gin.Default()
 )
 
 func Mode() string {
@@ -27,11 +29,19 @@ func SetEngine(engine *gin.Engine) {
 	Engine = engine
 }
 
+func SetTokenSignKey(signKey string) {
+	tokenSignKey = signKey
+}
+
+func DisableToken() {
+	checkToken = false
+}
+
 func AddController(ctl Controller) error {
 	if ctl.Group() == "" {
 		return errors.New("invalid group name")
 	}
 	rg := Engine.Group("/" + ctl.Group())
-	rg.Any("/*action", handleRequest(ctl))
+	rg.Any("/*action", Auth(ctl), handleRequest(ctl))
 	return nil
 }
