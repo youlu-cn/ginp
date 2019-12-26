@@ -57,6 +57,10 @@ type Request struct {
 	ctx *gin.Context
 }
 
+func (req *Request) Context() *gin.Context {
+	return req.ctx
+}
+
 func (req *Request) Bind(obj interface{}) error {
 	return req.ctx.Bind(obj)
 }
